@@ -17,7 +17,11 @@ resource "docker_image" "nginx" {
   name         = "nginx"
   keep_locally = false
 }
-
+resource "null_resource" "generate_config" {
+  provisioner "local-exec" {
+    command = "echo 'config' > config.json"
+  }
+}
 resource "docker_container" "web" {
   image = docker_image.nginx.image_id
   name  = "web-nginx"
@@ -29,9 +33,15 @@ resource "docker_container" "web" {
     host_path      = data.local_file.html.filename
     container_path = "/usr/share/nginx/html/index.html"
   }
+  // tofu graph
+  //Ici, le conteneur sera lancé uniquement après l’exécution du script local-exec.
+  // Même si le conteneur ne dépend pas directement du fichier config.json,
+  // la dépendance est déclarée explicitement.
+  depends_on = [null_resource.generate_config, data.local_file.html]
   # mounts {
   #   target = "/usr/share/nginx/html/index.html"
   #   source = abspath(local_file.index.filename)
   #   type   = "bind"
-  # }
+  # }tofu graph
 }
+
