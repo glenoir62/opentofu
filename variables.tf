@@ -13,9 +13,9 @@ variable "nom_serveur" {
 variable "roles" {
   type = map(string)
   default = {
-    "user"  = "lecture-seule"
-    "admin" = "ecriture"
-    "lecture-seule"  = "lecture-seule"
+    "user"          = "lecture-seule"
+    "admin"         = "ecriture"
+    "lecture-seule" = "lecture-seule"
   }
 }
 
@@ -40,10 +40,19 @@ variable "tags" {
 
 variable "utilisateur" {
   type = object({
-    nom     = string
-    actif   = bool
-    niveau  = number
+    nom    = string
+    actif  = bool
+    niveau = number
   })
+
+  validation {
+    //condition     = alltrue([for p in var.ports_autorises : p >= 1024 && p <= 65535])
+    //condition     = can(regex("^[a-z]+$", var.nom_projet))
+    //condition     = length(var.image_id) > 4 && substr(var.image_id, 0, 4) == "ami-"
+    //condition     = can(regex("^.+@.+$", var.email_contact))
+    condition     = var.utilisateur.nom == "GLEO"
+    error_message = "La variable validation_test doit être exactement 'ok'"
+  }
 }
 
 variable "coordonnees" {

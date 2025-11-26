@@ -43,5 +43,18 @@ resource "docker_container" "web" {
   #   source = abspath(local_file.index.filename)
   #   type   = "bind"
   # }tofu graph
+
+  //path.module
+  //La variable path.module retourne le chemin absolu vers le dossier
+  // dans lequel se trouve le fichier .tf en cours.
+  //filename = "${path.module}/data/config.json"
+
+  //path.root
+  //La variable path.root retourne le chemin absolu vers le répertoire racine du projet Terraform,
+  // c’est-à-dire celui qui contient le fichier principal (généralement main.tf) dans lequel vous avez initialisé l’exécution (terraform init, terraform apply).
+
+  //path.cwd
+  // Cette variable donne le répertoire actuel de la ligne de commande,
+  // autrement dit : le dossier depuis lequel la commande terraform ou tofu a été lancée
 }
 
