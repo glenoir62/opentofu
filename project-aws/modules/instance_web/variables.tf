@@ -9,6 +9,16 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
+variable "instance_type_prod" {
+  type    = string
+  default = "t3.small"
+}
+
+variable "instance_type_dev" {
+  type    = string
+  default = "t2.micro"
+}
+
 variable "project_name" {
   description = "Nom du projet pour les tags."
   type        = string

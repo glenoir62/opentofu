@@ -5,6 +5,7 @@ terraform {
     key    = "project-aws/terraform.tfstate" # Chemin du fichier d'état dans le bucket pour ce projet
     region = "eu-west-3"                          # Région de votre backend
     use_lockfile = true
+    workspace_key_prefix = "env-"
     encrypt      = true
   }
 }

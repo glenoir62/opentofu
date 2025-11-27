@@ -31,7 +31,8 @@ resource "aws_security_group" "web_sg" {
 
 resource "aws_instance" "web_server" {
   ami           = var.ami_id        // Variable d'entrée du module
-  instance_type = var.instance_type // Variable d'entrée du module
+  instance_type = terraform.workspace == "prod" ? var.instance_type_prod : var.instance_type_dev
+  //count         = terraform.workspace == "prod" ? 3 : 1
   subnet_id     = var.subnet_id     // Variable d'entrée du module
   associate_public_ip_address = true
 
@@ -91,8 +92,8 @@ resource "aws_instance" "web_server" {
             EOF
 
   tags = {
-    Name        = "WebServer-NGINX-${var.project_name}"
-    Environment = var.environment_tag
+    Name        = "web-server-${terraform.workspace}"
+    Environment = terraform.workspace
     ManagedBy   = "Terraform"
     Project     = var.project_name
   }
