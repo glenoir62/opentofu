@@ -1,4 +1,8 @@
 /*
+tofu destroy -target=aws_instance.web_server
+export AWS_PROFILE=
+tofu apply -replace=aws_instance.web_server
+
 aws ec2 get-console-output --instance-id web_server_instance_id --profile projet1-sso
 
 
