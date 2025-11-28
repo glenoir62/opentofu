@@ -4,11 +4,8 @@ terraform {
     bucket = "gleo-tfstate-bucket-projet1-unique-12345"
     key    = "project-aws/terraform.tfstate" # Chemin du fichier d'état dans le bucket pour ce projet
     region = "eu-west-3"                          # Région de votre backend
-    //use_lockfile = true
+    use_lockfile = true
     workspace_key_prefix = "env-"
     encrypt      = true
-
-    # Pour le verrouillage, utilisez DynamoDB (recommandé)
-    dynamodb_table       = "terraform-lock-table-projet1"
   }
 }
