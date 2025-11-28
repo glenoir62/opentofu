@@ -1,4 +1,4 @@
-name: Terraform Validate, Lint & Scan
+name: Terraform Validate, Lint, Scan & Plan
 
 on:
   push:
@@ -14,6 +14,7 @@ permissions:
   id-token: write       # Nécessaire pour l'authentification OIDC AWS
   contents: read        # Nécessaire pour actions/checkout
   pull-requests: write  # Pour poster des commentaires sur les PR
+  security-events: write # Pour upload des résultats Trivy
 
 jobs:
   validate-code:
@@ -30,17 +31,10 @@ jobs:
           role-to-assume: arn:aws:iam::466850084367:role/GitHubActions-Terraform-Role-Projet1
           aws-region: eu-west-3
 
-      # ✅ OPTION 1 : Utiliser OpenTofu
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@v1
         with:
-          tofu_version: '1.8.8' # Version stable d'OpenTofu
-
-      # ❌ COMMENTÉ : Terraform (utiliser OpenTofu à la place)
-      # - name: Setup Terraform
-      #   uses: hashicorp/setup-terraform@v3
-      #   with:
-      #     terraform_version: "1.12.1"
+          tofu_version: '1.8.8'
 
       - name: OpenTofu Init (Validation Mode)
         id: init
@@ -50,10 +44,10 @@ jobs:
       - name: OpenTofu Format Check
         id: fmt
         run: tofu fmt -check -recursive -diff
-        continue-on-error: true  # Ne pas bloquer si formatage incorrect
+        continue-on-error: true
         working-directory: ./project-aws
 
-      - name: Auto-format if needed (optional)
+      - name: Auto-format if needed
         if: steps.fmt.outcome == 'failure'
         run: |
           tofu fmt -recursive
@@ -78,14 +72,14 @@ jobs:
       - name: Run TFLint
         run: tflint --recursive
         working-directory: ./project-aws
-        continue-on-error: true  # Ne pas bloquer sur les warnings
+        continue-on-error: true
 
       # Trivy (Security Scan)
       - name: Run Trivy IaC scan
         uses: aquasecurity/trivy-action@0.30.0
         with:
           scan-type: "config"
-          scan-ref: "./project-aws"  # Scanner uniquement project-aws
+          scan-ref: "./project-aws"
           format: "sarif"
           output: "trivy-results.sarif"
           exit-code: "0"
@@ -99,3 +93,119 @@ jobs:
           sarif_file: "trivy-results.sarif"
 
       # Résumé des résultats
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🔍 Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Init**: ${{ steps.init.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Format**: ${{ steps.fmt.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Validate**: ${{ steps.validate.outcome }}" >> $GITHUB_STEP_SUMMARY
+
+  terraform_plan:
+    name: Generate Terraform Plan
+    runs-on: ubuntu-latest
+    needs: validate-code
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::466850084367:role/GitHubActions-Terraform-Role-Projet1
+          aws-region: eu-west-3
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: '1.8.8'
+
+      - name: Determine Terraform workspace
+        run: |
+          if [ "${{ github.base_ref }}" = "main" ]; then
+            WORKSPACE=prod
+          elif [ "${{ github.base_ref }}" = "staging" ]; then
+            WORKSPACE=dev
+          else
+            WORKSPACE=dev
+          fi
+          echo "WORKSPACE=$WORKSPACE" >> $GITHUB_ENV
+
+      - name: OpenTofu Init (for plan)
+        id: init_plan
+        run: tofu init -input=false
+        working-directory: ./project-aws
+
+      - name: Select OpenTofu workspace
+        run: |
+          echo "Selecting workspace: $WORKSPACE"
+          tofu workspace select $WORKSPACE || tofu workspace new $WORKSPACE
+        working-directory: ./project-aws
+
+      - name: OpenTofu Plan
+        id: plan
+        run: |
+          echo "--- Running OpenTofu Plan ---"
+          tofu plan -input=false -no-color -detailed-exitcode > plan.txt
+          PLAN_COMMAND_RAW_EXIT_CODE=$?
+          echo "OpenTofu Plan command raw exit code: $PLAN_COMMAND_RAW_EXIT_CODE"
+
+          echo "--- Content of plan.txt ---"
+          cat plan.txt
+          echo "--- End of plan.txt ---"
+
+          FINAL_PLAN_DETAILS="Vérification manuelle du plan requise (analyse du contenu ou code de sortie non concluant)."
+
+          if [ "$PLAN_COMMAND_RAW_EXIT_CODE" -eq 1 ]; then
+            FINAL_PLAN_DETAILS="Erreur critique lors de la génération du plan (OpenTofu a retourné le code: $PLAN_COMMAND_RAW_EXIT_CODE)"
+            echo "Condition: La commande OpenTofu Plan a directement signalé une erreur."
+          elif grep -q -E "(No changes\. Infrastructure is up-to-date\.|No changes\. Your infrastructure matches the configuration\.|Plan: 0 to add, 0 to change, 0 to destroy\.)" plan.txt; then
+            FINAL_PLAN_DETAILS="aucun changement détecté (confirmé par l'analyse du contenu du plan)"
+            echo "Condition: Message explicite d'absence de changement trouvé dans plan.txt."
+          elif PLAN_SUMMARY_LINE=$(grep -E "^Plan: ([0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\.)$" plan.txt) && \
+              (echo "$PLAN_SUMMARY_LINE" | grep -q -E "([1-9][0-9]* to add|[1-9][0-9]* to change|[1-9][0-9]* to destroy)") ; then
+            ADD=$(echo "$PLAN_SUMMARY_LINE" | sed -n 's/^Plan: \([0-9]*\) to add,.*/\1/p')
+            CHANGE=$(echo "$PLAN_SUMMARY_LINE" | sed -n 's/^Plan: [0-9]* to add, \([0-9]*\) to change,.*/\1/p')
+            DESTROY=$(echo "$PLAN_SUMMARY_LINE" | sed -n 's/^Plan:.*, \([0-9]*\) to destroy.$/\1/p')
+            FINAL_PLAN_DETAILS="changements détectés (analyse du résumé: $ADD à ajouter, $CHANGE à modifier, $DESTROY à détruire). Voir l'artefact."
+            echo "Condition: Changements détectés à partir de la ligne de résumé de plan.txt."
+          else
+            echo "Warning: Contenu du plan ambigu pour la détection automatisée des changements. Code de sortie brut: $PLAN_COMMAND_RAW_EXIT_CODE."
+            if [ "$PLAN_COMMAND_RAW_EXIT_CODE" -eq 0 ] || [ "$PLAN_COMMAND_RAW_EXIT_CODE" -eq 2 ]; then
+                FINAL_PLAN_DETAILS="Plan généré (code: $PLAN_COMMAND_RAW_EXIT_CODE), mais contenu non analysable automatiquement. Vérification manuelle requise."
+            fi
+          fi
+
+          echo "PLAN_DETAILS=${FINAL_PLAN_DETAILS}" >> $GITHUB_OUTPUT
+          echo "Final PLAN_DETAILS set to: ${FINAL_PLAN_DETAILS}"
+
+          if [ "$PLAN_COMMAND_RAW_EXIT_CODE" -eq 1 ]; then
+            exit 1
+          fi
+        working-directory: ./project-aws
+        continue-on-error: true
+
+      - name: Comment PR with plan output
+        if: success() || failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 📝 Résultat du `tofu plan` pour le workspace `${{ env.WORKSPACE }}`
+
+            ${{ steps.plan.outputs.PLAN_DETAILS }}
+
+            Le plan complet est disponible en tant qu'artefact attaché à ce workflow.
+
+            **Veuillez examiner attentivement le plan avant d'approuver cette PR.**
+
+      - name: Upload OpenTofu plan artifact
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opentofu-plan-${{ env.WORKSPACE }}
+          path: ./project-aws/plan.txt
+          retention-days: 7

@@ -33,7 +33,8 @@ terraform {
 
 provider "aws" {
   region  = var.aws_region // Utilisation de la variable
-  profile = "projet1-sso"
+  //Il faut retirer le profile car Github Actions utilisera son profil et ses identifiants OIDC :
+  //profile = "projet1-sso"
 }
 
 provider "vault" {
