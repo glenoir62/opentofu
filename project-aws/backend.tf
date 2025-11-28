@@ -7,5 +7,7 @@ terraform {
     use_lockfile = true
     workspace_key_prefix = "env-"
     encrypt      = true
+    //dynamodb_table       = "terraform-lock-table-projet1"
+
   }
 }
