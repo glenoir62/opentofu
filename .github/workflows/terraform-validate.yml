@@ -336,7 +336,7 @@ jobs:
 
       - name: Récupérer l'IP et formater la sortie (Production)
         id: get_app_url_prod
-        run: |f
+        run: |
           set +e
           APP_IP=$(tofu output -raw web_server_public_ip)
           RETCODE=$?
