@@ -58,3 +58,21 @@ vault kv put secret/projet1/app/database username="app_user_vault" password="Sup
 vault kv get secret/projet1/app/database
 
 ```
+## TEST
+
+```
+go mod init dyma-iac/test
+
+go get github.com/gruntwork-io/terratest/modules/terraform
+go get github.com/gruntwork-io/terratest/modules/aws
+go get github.com/gruntwork-io/terratest/modules/http-helper
+go get github.com/stretchr/testify/assert
+
+go mod tidy
+
+aws sso login --profile XXXX
+export AWS_PROFILE=XXXXX
+
+from instance_web_module_test path
+go test -v -timeout 30m
+```
