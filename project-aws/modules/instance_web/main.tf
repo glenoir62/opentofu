@@ -86,7 +86,6 @@ resource "aws_instance" "web_server" {
                   <tr><td>IP Publique IPv4</td><td>$PUBLIC_IPV4</td></tr>
                   <tr><td>IP Privée IPv4</td><td>$PRIVATE_IPV4</td></tr>
                   <tr><td>Nom du Projet</td><td>${var.project_name}</td></tr>
-                  <tr><td>Tag Secret depuis SM</td><td>${var.secret_tag_value_sm}</td></tr>
                 </table>
               </body>
             </html>
@@ -100,9 +99,9 @@ resource "aws_instance" "web_server" {
       ManagedBy   = "Terraform"
       Project     = var.project_name
     },
-    {
-      SecretFromSM = var.secret_tag_value_sm
-    } # Tag secret récupéré depuis AWS Secrets Manager
+    # {
+    #   SecretFromSM = var.secret_tag_value_sm
+    # } # Tag secret récupéré depuis AWS Secrets Manager
   )
 
 }

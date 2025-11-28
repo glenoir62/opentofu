@@ -24,12 +24,21 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    vault = {
+      source  = "hashicorp/vault"
+      version = "~> 5.0"
+    }
   }
 }
 
 provider "aws" {
   region  = var.aws_region // Utilisation de la variable
   profile = "projet1-sso"
+}
+
+provider "vault" {
+  address = "http://127.0.0.1:8200"
+  token   = "dev-only-token"
 }
 
 /*
@@ -83,7 +92,7 @@ module "serveur_web_1" {
   environment_tag = var.environment_tag
   subnet_id       = module.vpc.public_subnets[0] # Utilise le premier sous-réseau public du module VPC
   vpc_id          = module.vpc.vpc_id            # Utilise l'ID du VPC créé par le module VPC
-  secret_tag_value_sm = local.app_api_key_from_sm
+  //secret_tag_value_sm = local.app_api_key_from_sm
 }
 
 # Vous pourriez même appeler le module une seconde fois pour créer un autre serveur !
@@ -96,6 +105,11 @@ module "serveur_web_1" {
 #   environment_tag = "Staging" # Environnement différent
 # }
 
-data "aws_secretsmanager_secret_version" "app_api_key_secret" {
-  secret_id = "projet1/app/api_key" // REMPLACEZ si vous avez utilisé un autre nom
+# data "aws_secretsmanager_secret_version" "app_api_key_secret" {
+#   secret_id = "projet1/app/api_key" // REMPLACEZ si vous avez utilisé un autre nom
+# }
+
+data "vault_kv_secret_v2" "app_db_credentials" {
+  mount = "secret"
+  name  = "projet1/app/database"
 }

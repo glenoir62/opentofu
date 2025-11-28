@@ -39,8 +39,8 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "secret_tag_value_sm" {
-  description = "Valeur secrète de SM pour un tag de démonstration."
-  type        = string
-  sensitive   = true
-}
+# variable "secret_tag_value_sm" {
+#   description = "Valeur secrète de SM pour un tag de démonstration."
+#   type        = string
+#   sensitive   = true
+# }

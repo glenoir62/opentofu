@@ -42,3 +42,19 @@
 |------|-------------|
 | <a name="output_web_server_instance_id"></a> [web\_server\_instance\_id](#output\_web\_server\_instance\_id) | ID de l'instance EC2 NGINX. |
 | <a name="output_web_server_public_ip"></a> [web\_server\_public\_ip](#output\_web\_server\_public\_ip) | Adresse IP publique de l'instance EC2 NGINX. |
+
+## VAULT
+
+```
+docker run -d --cap-add=IPC_LOCK -p 8200:8200 -e 'VAULT_DEV_ROOT_TOKEN_ID=dev-only-token' hashicorp/vault server -dev
+
+Adresse de Vault (VAULT_ADDR) : http://127.0.0.1:8200
+
+Token Racine (VAULT_TOKEN) : dev-only-token
+
+export VAULT_ADDR='http://127.0.0.1:8200'
+vault login dev-only-token
+vault kv put secret/projet1/app/database username="app_user_vault" password="SuperSecretPasswordFromVault123!"
+vault kv get secret/projet1/app/database
+
+```
