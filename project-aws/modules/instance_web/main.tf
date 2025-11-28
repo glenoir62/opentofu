@@ -37,6 +37,10 @@ resource "aws_instance" "web_server" {
 
   associate_public_ip_address = true
 
+  root_block_device {
+    encrypted = true
+    # Vous pouvez aussi spécifier kms_key_id si vous utilisez une clé CMK
+  }
   metadata_options {
     http_tokens   = "required"
     http_endpoint = "enabled"

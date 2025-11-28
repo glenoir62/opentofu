@@ -65,6 +65,20 @@ module "vpc" {
   name = "${var.project_name}-VPC"
   cidr = var.vpc_cidr_block # Utilise la variable définie dans variables.tf racine
 
+  enable_flow_log                      = true
+  flow_log_destination_type            = "cloud-watch-logs" # Ou "s3"
+  flow_log_traffic_type                = "ALL"
+
+  # Pour une configuration simple avec CloudWatch Logs, vous devrez créer
+  # un groupe CloudWatch Log et un rôle IAM avec les permissions nécessaires.
+  # Le module VPC peut créer le groupe de logs pour vous si vous lui donnez un nom :
+  //flow_log_cloudwatch_log_group_name = "/aws/vpc/${var.project_name}-${terraform.workspace}-flow-logs"
+  # Pour le rôle IAM, le module peut aussi le créer si vous activez create_flow_log_cloudwatch_iam_role = true
+  # Pour la simplicité ici, nous allons laisser le module tenter de le créer :
+  create_flow_log_cloudwatch_iam_role = true
+  create_flow_log_cloudwatch_log_group = true
+
+
   azs             = ["${var.aws_region}a", "${var.aws_region}b", "${var.aws_region}c"] # Exemple pour 3 AZs
   private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]                      # Exemple de CIDRs pour sous-réseaux privés
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]                # Exemple de CIDRs pour sous-réseaux publics
